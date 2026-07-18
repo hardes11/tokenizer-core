@@ -1,6 +1,12 @@
 # @hardes11/tokenizers-core
 
-Framework-agnostic LLM token counter. GLM/GPT/Qwen/DeepSeek exact (via HuggingFace `tokenizer.json` + `@huggingface/tokenizers`, or `js-tiktoken`); Claude/Gemini approx (`o200k_base` x 1.15, labeled). No Obsidian or MCP dependencies — usable from any Node or bundler context.
+**Framework-agnostic LLM token counter — GLM/GPT/Qwen/DeepSeek exact, Claude/Gemini approx. No Obsidian or MCP coupling; usable from any Node or bundler context.**
+
+![npm version](https://img.shields.io/npm/v/@hardes11/tokenizers-core.svg) ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg)
+
+Count LLM tokens for text under a specific model's real tokenizer — so you can check whether content fits a context budget before sending it to a model. GLM, GPT, Qwen, and DeepSeek are counted **exactly** (HuggingFace `tokenizer.json` via `@huggingface/tokenizers`, or `js-tiktoken`); Claude and Gemini have no published offline tokenizer, so they use `o200k_base × 1.15` and are returned with `source: "approx"` — never silently passed off as exact.
+
+This is the engine behind [`obsidian-llm-token-count`](https://github.com/hardes11/obsidian-llm-token-count) (status-bar plugin) and the `vault_count_tokens` MCP tool in [`obsidian-opencode-mcp-plugin`](https://github.com/hardes11/obsidian-opencode-mcp-plugin). It has no Obsidian or MCP imports — use it from a CLI, a script, another plugin, or any bundler.
 
 ## Install
 
@@ -8,7 +14,7 @@ Framework-agnostic LLM token counter. GLM/GPT/Qwen/DeepSeek exact (via HuggingFa
 npm install @hardes11/tokenizers-core
 ```
 
-## API
+## Quick start
 
 ```typescript
 import { countTokens, isApproxModel, listSupportedModels } from "@hardes11/tokenizers-core";
@@ -18,18 +24,33 @@ const result = await countTokens("Hello, world!", "glm-5.2", "/path/to/cache");
 
 isApproxModel("claude");   // true
 isApproxModel("glm-5.2");  // false
-listSupportedModels();     // ["glm-5.2", "glm-5", "glm-4.6v-flash", "gpt-5", "gpt-4o", "gpt-4", "gpt-3.5", "qwen", "deepseek-v3.1", "claude", "gemini"]
+listSupportedModels();
+// => ["glm-5.2", "glm-5", "glm-4.6v-flash", "gpt-5", "gpt-4o", "gpt-4", "gpt-3.5", "qwen", "deepseek-v3.1", "claude", "gemini"]
 ```
 
-### `countTokens(text, model, cacheDir) -> Promise<CountResult>`
+## API
+
+### `countTokens(text, model, cacheDir) → Promise<CountResult>`
 
 - `text: string` — the text to count.
 - `model: string` — one of `listSupportedModels()`.
 - `cacheDir: string` — writable directory for caching HuggingFace `tokenizer.json` files (created if missing). The caller chooses the location (e.g. a plugin's `.obsidian/plugins/<id>/tokenizers/` dir).
 
-Returns `{ tokens, model, source, bytes, chars }`. `source` is `"exact"` for HF/tiktoken models and `"approx"` for Claude/Gemini. Throws `TokenizerLoadError` on fetch failure (caller should surface or fall back).
+Returns `{ tokens, model, source, bytes, chars }`. `source` is `"exact"` for HF/tiktoken models and `"approx"` for Claude/Gemini. Throws `TokenizerLoadError` on fetch failure — the caller should surface the error or fall back (the Obsidian plugins fall back to an approx count in the status bar).
 
-### Models
+### `isApproxModel(model) → boolean`
+
+`true` for `claude` and `gemini`; `false` for all exact-tokenizer models.
+
+### `listSupportedModels() → string[]`
+
+The 11 supported model keys.
+
+### `loadTokenizer(model, cacheDir) → Promise<Tokenizer | null>`
+
+Lower-level access to the loaded tokenizer (returns `null` for tiktoken/approx models, which don't use a `Tokenizer` instance). Useful if you need `encode`/`decode` directly.
+
+## Supported models
 
 | Model | Source | Method |
 |---|---|---|
@@ -37,9 +58,19 @@ Returns `{ tokens, model, source, bytes, chars }`. `source` is `"exact"` for HF/
 | `gpt-5`, `gpt-4o` | exact | `js-tiktoken` `o200k_base` |
 | `gpt-4`, `gpt-3.5` | exact | `js-tiktoken` `cl100k_base` |
 | `qwen`, `deepseek-v3.1` | exact | HuggingFace `tokenizer.json` (pinned SHA) |
-| `claude`, `gemini` | approx | `o200k_base` x 1.15 (labeled `approx`) |
+| `claude`, `gemini` | approx | `o200k_base × 1.15` (labeled `approx`) |
 
-GLM tokenizer SHAs are pinned to a specific HuggingFace commit (see `src/registry.ts`) to guarantee reproducible counts. A version bump is a registry edit + a new release.
+GLM/Qwen/DeepSeek tokenizer SHAs are pinned to a specific HuggingFace commit (see `src/registry.ts`) to guarantee reproducible counts across machines and over time. A version bump is a registry edit + a new release of this package.
+
+## Why
+
+GPT-based token counts are a poor proxy for GLM models: `o200k_base` over-counts pure Chinese by ~15–30% vs real GLM tokens, which is bad enough to break "does this fit in context?" decisions. This package loads each model's real tokenizer (HuggingFace for GLM/Qwen/DeepSeek, `js-tiktoken` for GPT) so the count is exact. For models with no published offline tokenizer (Claude, Gemini), it returns an honest labeled approximation rather than a silent guess.
+
+## Implementation notes
+
+- Pure TypeScript, no Obsidian or MCP imports — the cache path is a parameter, never hardcoded.
+- `@huggingface/tokenizers` (pure JS port of the Rust `tokenizers` crate) + `js-tiktoken` are `dependencies`; the published `dist/` keeps them external so the consumer's bundler resolves them.
+- Build: `npm run build` (esbuild → `dist/index.js`, `tsc --emitDeclarationOnly` → `dist/*.d.ts`). Test: `npm test` (Node's built-in test runner, no test framework dep).
 
 ## License
 
