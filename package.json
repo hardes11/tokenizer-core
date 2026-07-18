@@ -1,5 +1,5 @@
 {
-  "name": "llm-token-count",
+  "name": "tokenizer-core",
   "version": "0.1.0",
   "description": "Framework-agnostic LLM token counter — GLM/GPT/Qwen/DeepSeek exact, Claude/Gemini approx",
   "type": "commonjs",
@@ -26,7 +26,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hardes11/llm-token-count"
+    "url": "https://github.com/hardes11/tokenizer-core"
   },
   "keywords": [
     "tokenizer",

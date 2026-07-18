@@ -1,8 +1,8 @@
-# llm-token-count
+# tokenizer-core
 
 **Framework-agnostic LLM token counter — GLM/GPT/Qwen/DeepSeek exact, Claude/Gemini approx. No Obsidian or MCP coupling; usable from any Node or bundler context.**
 
-![npm version](https://img.shields.io/npm/v/llm-token-count.svg) ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg)
+![npm version](https://img.shields.io/npm/v/tokenizer-core.svg) ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg)
 
 Count LLM tokens for text under a specific model's real tokenizer — so you can check whether content fits a context budget before sending it to a model. GLM, GPT, Qwen, and DeepSeek are counted **exactly** (HuggingFace `tokenizer.json` via `@huggingface/tokenizers`, or `js-tiktoken`); Claude and Gemini have no published offline tokenizer, so they use `o200k_base × 1.15` and are returned with `source: "approx"` — never silently passed off as exact.
 
@@ -11,13 +11,13 @@ This is the engine behind [`obsidian-llm-token-count`](https://github.com/hardes
 ## Install
 
 ```bash
-npm install llm-token-count
+npm install tokenizer-core
 ```
 
 ## Quick start
 
 ```typescript
-import { countTokens, isApproxModel, listSupportedModels } from "llm-token-count";
+import { countTokens, isApproxModel, listSupportedModels } from "tokenizer-core";
 
 const result = await countTokens("Hello, world!", "glm-5.2", "/path/to/cache");
 // => { tokens: 4, model: "glm-5.2", source: "exact", bytes: 13, chars: 13 }
