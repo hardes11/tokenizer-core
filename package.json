@@ -18,5 +18,23 @@
     "esbuild": "*",
     "tsx": "^4.23.1",
     "typescript": "*"
-  }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hardes11/tokenizers-core"
+  },
+  "keywords": [
+    "tokenizer",
+    "llm",
+    "tokens",
+    "glm",
+    "gpt",
+    "obsidian"
+  ],
+  "author": "William Hardesty"
 }
