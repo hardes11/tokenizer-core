@@ -1,6 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -10,7 +11,7 @@ import {
   listSupportedModels,
 } from "../src/counter.js";
 import { getTiktokenCount } from "../src/tiktoken.js";
-import { TokenizerLoadError } from "../src/loader.js";
+import { clearTokenizerCache, TokenizerLoadError } from "../src/loader.js";
 
 // Deterministic expectations, captured from the spike (spike/spike.ts) against
 // the pinned GLM-5.2 tokenizer (sha b4734de4facf877f85769a911abafc5283eab3d9)
@@ -41,6 +42,49 @@ describe("GLM-5.2 exact counts (network on first run, cached after)", () => {
       assert.equal(r.bytes, Buffer.byteLength(s.text, "utf8"));
     });
   }
+});
+
+describe("clearTokenizerCache (re-download bug fix)", () => {
+  test("clearing cache deletes disk files for a loaded model", async () => {
+    // Pre-condition: the GLM-5.2 describe block above already loaded the
+    // tokenizer into the in-memory Map AND wrote the disk cache files.
+    const tokPath = join(cacheDir, "glm-5.2.json");
+    const cfgPath = join(cacheDir, "glm-5.2.config.json");
+    assert.ok(existsSync(tokPath), "pre: tokenizer.json should exist on disk");
+    assert.ok(existsSync(cfgPath), "pre: tokenizer_config.json should exist on disk");
+
+    clearTokenizerCache("glm-5.2", cacheDir);
+
+    assert.equal(existsSync(tokPath), false, "tokenizer.json should be gone after clear");
+    assert.equal(existsSync(cfgPath), false, "tokenizer_config.json should be gone after clear");
+  });
+
+  test("after clear, countTokens re-fetches and still produces the exact count", async () => {
+    // The in-memory Map is now empty AND disk files are gone — so countTokens
+    // MUST re-fetch from HuggingFace. If the clear missed the in-memory
+    // layer, this would still return a count (the bug) but here we additionally
+    // confirm the disk files reappear (proving a real re-fetch happened).
+    const tokPath = join(cacheDir, "glm-5.2.json");
+    const cfgPath = join(cacheDir, "glm-5.2.config.json");
+    assert.equal(existsSync(tokPath), false, "pre-clear: tokenizer.json gone");
+
+    const r = await countTokens("Hello, world! This is a token-count spike.", "glm-5.2", cacheDir);
+    assert.equal(r.source, "exact");
+    assert.equal(r.tokens, 11, "re-fetched count must still match the pinned expectation");
+    assert.ok(existsSync(tokPath), "post: tokenizer.json re-fetched to disk");
+    assert.ok(existsSync(cfgPath), "post: tokenizer_config.json re-fetched to disk");
+  });
+
+  test("clearTokenizerCache is a no-op (ENOENT-safe) for never-cached models", () => {
+    assert.doesNotThrow(() => clearTokenizerCache("glm-5", cacheDir));
+    assert.equal(existsSync(join(cacheDir, "glm-5.json")), false);
+  });
+
+  test("clearTokenizerCache is a no-op for non-HF models (tiktoken/approx)", () => {
+    // gpt-4o is tiktoken — no disk files, no in-memory entry. Must not throw.
+    assert.doesNotThrow(() => clearTokenizerCache("gpt-4o", cacheDir));
+    assert.doesNotThrow(() => clearTokenizerCache("claude", cacheDir));
+  });
 });
 
 describe("tiktoken o200k_base (gpt-5, gpt-4o)", () => {

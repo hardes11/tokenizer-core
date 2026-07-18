@@ -6,7 +6,7 @@ export {
   type TokenizerSource,
 } from "./counter.js";
 
-export { loadTokenizer, TokenizerLoadError } from "./loader.js";
+export { loadTokenizer, clearTokenizerCache, TokenizerLoadError } from "./loader.js";
 
 export {
   REGISTRY,

@@ -1,4 +1,5 @@
 import { Tokenizer } from "@huggingface/tokenizers";
+import { existsSync, unlinkSync } from "node:fs";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { lookupModel } from "./registry.js";
@@ -127,6 +128,36 @@ export async function loadTokenizer(
 
   tokenizerCache.set(model, tokenizer);
   return tokenizer;
+}
+
+/**
+ * Invalidate BOTH layers of the tokenizer cache for a model:
+ *   - drops the in-memory `Tokenizer` instance (module-level Map), and
+ *   - deletes the on-disk `<model>.json` + `<model>.config.json` files.
+ *
+ * After this, the next `loadTokenizer` / `countTokens` call for the model
+ * will re-fetch from HuggingFace. Without the in-memory drop, deleting only
+ * the disk files is a no-op until the process is restarted — which is exactly
+ * the bug this function fixes (the standalone plugin's "Re-download
+ * tokenizer" button was clearing disk but not memory).
+ *
+ * Non-HF models (tiktoken / approx) have no cache and are a no-op.
+ * Missing disk files are ignored (ENOENT-safe).
+ */
+export function clearTokenizerCache(model: string, cacheDir: string): void {
+  // 1. In-memory layer — always safe to delete even if absent.
+  tokenizerCache.delete(model);
+
+  // 2. Disk layer — best-effort unlink, ignore ENOENT / other errors.
+  const tokPath = join(cacheDir, `${model}.json`);
+  const cfgPath = join(cacheDir, `${model}.config.json`);
+  for (const p of [tokPath, cfgPath]) {
+    try {
+      if (existsSync(p)) unlinkSync(p);
+    } catch {
+      /* ignore — file may be missing or locked; not our problem here */
+    }
+  }
 }
 
 // Re-export for consumers that only want the tiktoken helper path.
