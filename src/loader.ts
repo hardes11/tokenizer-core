@@ -145,6 +145,10 @@ export async function loadTokenizer(
  * Missing disk files are ignored (ENOENT-safe).
  */
 export function clearTokenizerCache(model: string, cacheDir: string): void {
+  if (model.includes('/') || model.includes('\\') || model.includes('..') || model.includes('\0')) {
+    throw new TokenizerLoadError(`Invalid model name: ${model}`, model);
+  }
+
   // 1. In-memory layer — always safe to delete even if absent.
   tokenizerCache.delete(model);
 
