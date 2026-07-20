@@ -1,6 +1,6 @@
 {
   "name": "tokenizer-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-agnostic LLM token counter — GLM/GPT/Qwen/DeepSeek exact, Claude/Gemini approx",
   "type": "commonjs",
   "main": "dist/index.js",

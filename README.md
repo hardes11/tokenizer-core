@@ -6,7 +6,7 @@
 
 Count LLM tokens for text under a specific model's real tokenizer — so you can check whether content fits a context budget before sending it to a model. GLM, GPT, Qwen, and DeepSeek are counted **exactly** (HuggingFace `tokenizer.json` via `@huggingface/tokenizers`, or `js-tiktoken`); Claude and Gemini have no published offline tokenizer, so they use `o200k_base × 1.15` and are returned with `source: "approx"` — never silently passed off as exact.
 
-This is the engine behind [`obsidian-llm-token-count`](https://github.com/hardes11/obsidian-llm-token-count) (status-bar plugin) and the `vault_count_tokens` MCP tool in [`obsidian-opencode-mcp-plugin`](https://github.com/hardes11/obsidian-opencode-mcp-plugin). It has no Obsidian or MCP imports — use it from a CLI, a script, another plugin, or any bundler.
+This is the engine behind [`llm-token-count`](https://github.com/hardes11/llm-token-count) (an Obsidian status-bar plugin) and a `vault_count_tokens` MCP tool. It has no Obsidian or MCP imports — use it from a CLI, a script, another plugin, or any bundler.
 
 ## Install
 
